@@ -55,5 +55,13 @@ class Preprocessing:
         s = re.sub(r'[^a-zA-Z.!?]+', r' ', s)
         s = re.sub(r'\s+', r' ', s)
         return s
+    
+    # normalize input english sentence  
+     def normalize_eng(self,s):
+        s = self.unicode_to_ascii(s)
+        s = re.sub(r'([!.?])', r' \1', s)
+        s = re.sub(r'[^a-zA-Z.!?]+', r' ', s)
+        s = re.sub(r'\s+', r' ', s)
+        return s
       
 
