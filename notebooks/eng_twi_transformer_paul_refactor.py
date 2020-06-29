@@ -22,7 +22,7 @@ lines= pd.read_table('../input/datasetentwi/en-twi.txt', names=['eng', 'twi'])
 # If you don't truncate sequences up to a reasonable maximum, the internal dimensions of your model will be too large
 
 # Specify maximum sequence length
-MAX_SEQ_LENGTH = 128 # very important to truncate or things will get too large and bog down the system
+MAX_SEQ_LENGTH = 32 # very important to truncate or things will get too large and bog down the system
 
 
 # check dimensions
@@ -34,7 +34,7 @@ print(lines.shape)
 remove_digits = str.maketrans('', '', digits)
 lines.eng=lines.eng.apply(lambda x: x.translate(remove_digits))
 lines.twi=lines.twi.apply(lambda x: x.translate(remove_digits))
-lines.twi = lines.twi.apply(lambda x: re.sub("[ƆɔɛƐ]", "", x))
+#lines.twi = lines.twi.apply(lambda x: re.sub("[ƆɔɛƐ]", "", x))
 
 
 # Remove extra spaces
@@ -187,18 +187,19 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 
 # compile model
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
+#model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
 
 # load a previously trained model to continue training from a checkpoint?
 LOAD_MODEL = True
 if LOAD_MODEL:
-    model.load_weights('trained_models/TrainedModel01.h5')
+    model.load_weights('TrainedModel.h5')
 
 # Specify training parameters
 train_samples = len(X_train)
 val_samples = len(X_test)
-batch_size = 32 # 32 works, 64 too large on kaggle
-epochs = 4 # 50 for full length run, 2 for short run to make sure things work
+batch_size = 96 # 32 works, 64 too large on kaggle
+epochs = 5 # 50 for full length run, 2 for short run to make sure things work
 
 
 # Train
