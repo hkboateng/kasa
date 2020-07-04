@@ -172,6 +172,20 @@ def generate_batch(X = X_train, y = y_train, batch_size = 16):
                         # Offset by one timestep
                         decoder_target_data[i, t - 1, target_token_index[word]] = 1.
             yield([encoder_input_data, decoder_input_data], decoder_target_data)
+            
+# data generator for training
+def generate_batch_TEST(X = X_TEST, y = y_TEST, batch_size = 16):
+    ''' Generate a batch of data '''
+    while True:
+        for j in range(0, len(X), batch_size):
+            encoder_input_data = np.zeros((batch_size, max_length_src),dtype='float32')
+            decoder_input_data = np.zeros((batch_size, max_length_tar),dtype='float32')
+            decoder_target_data = np.zeros((batch_size, max_length_tar, num_decoder_tokens),dtype='float32')
+            for i, (input_text, target_text) in enumerate(zip(X[j:j+batch_size], y[j:j+batch_size])):
+                for t, word in enumerate(input_text.split()):
+                    encoder_input_data[i, t] = input_token_index[word] # encoder input seq
+                    
+            yield([encoder_input_data, decoder_input_data], decoder_target_data)
 
 
 # Encoder
