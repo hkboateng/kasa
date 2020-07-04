@@ -59,10 +59,18 @@ lines.twi=lines.twi.apply(lambda x: " ".join(x.split(' ')[:MAX_SEQ_LENGTH]))
 
 
 # Add start and end tokens to target sequences
-lines.twi = lines.twi.apply(lambda x : 'START_ '+ x + ' _END')
+lines.twi=lines.twi.apply(lambda x : 'START_ '+ x + ' _END')
 
-# do this for the _TEST sentences as well
-lines_TEST.twi = lines.twi.apply(lambda x : 'START_ '+ x + ' _END')
+# do everything for the _TEST sentences as well
+lines_TEST.eng=lines_TEST.eng.apply(lambda x: x.translate(remove_digits))
+lines_TEST.twi=lines_TEST.twi.apply(lambda x: x.translate(remove_digits))
+lines_TEST.eng=lines_TEST.eng.apply(lambda x: x.strip())
+lines_TEST.twi=lines_TEST.twi.apply(lambda x: x.strip())
+lines_TEST.eng=lines_TEST.eng.apply(lambda x: re.sub(" +", " ", x))
+lines_TEST.twi=lines_TEST.twi.apply(lambda x: re.sub(" +", " ", x))
+lines_TEST.eng=lines_TEST.eng.apply(lambda x: " ".join(x.split(' ')[:MAX_SEQ_LENGTH]))
+lines_TEST.twi=lines_TEST.twi.apply(lambda x: " ".join(x.split(' ')[:MAX_SEQ_LENGTH]))
+lines_TEST.twi=lines_TEST.twi.apply(lambda x : 'START_ '+ x + ' _END')
 
 
 # Print a random sample of the data
