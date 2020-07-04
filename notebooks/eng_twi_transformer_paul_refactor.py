@@ -403,15 +403,19 @@ if TEST_MODEL:
     TEST_gen = generate_batch_TEST(X_TEST, y_TEST, batch_size = 1)
     k=-1
     for twi_sentence in X_TEST:
-        # Evaluate on next sentence
-        k+=1
-        (input_seq, actual_output), _ = next(TEST_gen)
-        decoded_sentence = decode_sequence(input_seq)
-        print('Input English sentence:', X_TEST[k:k+1].values[0])
-        print('Actual Twi Translation:', y_TEST[k:k+1].values[0][6:-4])
-        print('Predicted Twi Translation:', decoded_sentence[:-4])
-        
-        predicted_translations.append(decoded_sentence[:-4])
+        try:
+            # Evaluate on next sentence
+            k+=1
+            (input_seq, actual_output), _ = next(TEST_gen)
+            decoded_sentence = decode_sequence(input_seq)
+            print('Input English sentence:', X_TEST[k:k+1].values[0])
+            print('Actual Twi Translation:', y_TEST[k:k+1].values[0][6:-4])
+            print('Predicted Twi Translation:', decoded_sentence[:-4])
+            predicted_translations.append(decoded_sentence[:-4])
+        except Exception as e:
+            print('Translation Failed, probably due to out of vocab words, exact error:')
+            print(e)
+            predicted_translations.append(str(e))
     lines_TEST['twi_predicted'] = predicted_translations
     lines_TEST.to_csv('../data/Twi_text_predicted.csv')
     
