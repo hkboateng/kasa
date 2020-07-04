@@ -11,24 +11,33 @@ from tensorflow.keras.layers import Input, LSTM, Embedding, Dense
 from tensorflow.keras.models import Model
 
 
-# Specify data to use:
+# Settings
+TRAIN_MODEL = False
+TEST_MODEL = True # test mode
+# If you don't truncate sequences up to a reasonable maximum, the internal dimensions of your model will be too large
+MAX_SEQ_LENGTH = 32 # very important to truncate or things will get too large and bog down the system
+latent_dim = 50 # Dimension of latent context vector between encoder and decoder
+LOAD_MODEL = True # load a previously trained model to continue training from a checkpoint? - ModelToLoad
+ModelToLoad = 'trained_models/TrainedModel06_32maxw_110epochs.h5'
 
-# SMALLER SET:
+# Determine data to use:
+# if TRAIN_MODEL: # you have to analyze the text again for dictionary, etc
+# SMALLER TRAIN SET:
 # lines= pd.read_table('../input/dataset-twi/en-tw.txt', names=['eng', 'twi'])
-# BIGGER SET:
+# BIGGER TRAIN SET:
 lines= pd.read_table('../input/datasetentwi/en-twi.txt', names=['eng', 'twi'])
 
-
-# If you don't truncate sequences up to a reasonable maximum, the internal dimensions of your model will be too large
-
-# Specify maximum sequence length
-MAX_SEQ_LENGTH = 32 # very important to truncate or things will get too large and bog down the system
+if TEST_MODEL:
+    lines_tw = pd.read_csv('../data/Twi_text.csv',header=None)
+    lines_eng = pd.read_csv('../data/English_text.csv',header=None)
+    lines_TEST = pd.DataFrame(columns=['eng','twi','twi_predicted'])
+    lines_TEST['eng'] = lines_eng[0].tolist()
+    lines_TEST['twi'] = lines_tw[0].tolist()
 
 
 # check dimensions
 print('shape of data:')
 print(lines.shape)
-
 
 # Remove all numbers from text
 remove_digits = str.maketrans('', '', digits)
@@ -52,10 +61,17 @@ lines.twi=lines.twi.apply(lambda x: " ".join(x.split(' ')[:MAX_SEQ_LENGTH]))
 # Add start and end tokens to target sequences
 lines.twi = lines.twi.apply(lambda x : 'START_ '+ x + ' _END')
 
+# do this for the _TEST sentences as well
+lines_TEST.twi = lines.twi.apply(lambda x : 'START_ '+ x + ' _END')
+
 
 # Print a random sample of the data
-print("random data sample:")
+print("random training data sample:")
 print(lines.sample(10))
+
+if TEST_MODEL:
+    print("random training data sample:")
+    print(lines_TEST.sample(10))
 
 
 # Vocabulary of English
@@ -101,36 +117,27 @@ num_decoder_tokens += 1 # For zero padding
 num_decoder_tokens
 
 
-# In[16]:
-
 input_token_index = dict([(word, i+1) for i, word in enumerate(input_words)])
 target_token_index = dict([(word, i+1) for i, word in enumerate(target_words)])
-
-
-# In[17]:
 
 reverse_input_char_index = dict((i, word) for word, i in input_token_index.items())
 reverse_target_char_index = dict((i, word) for word, i in target_token_index.items())
 
 
-# In[18]:
-
 lines = shuffle(lines)
 lines.head(10)
 
-
-# In[19]:
-
-# Train - Test Split
-X, y = lines.eng, lines.twi
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
-X_train.shape, X_test.shape
-
-
-# If you wanted to save the data in pickled format:
-
-#X_train.to_pickle('X_train.pkl')
-#X_test.to_pickle('X_test.pkl')
+if TRAIN_MODEL:
+    # Train - Test Split
+    X, y = lines.eng, lines.twi
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
+    
+    # If you wanted to save the data in pickled format:
+    #X_train.to_pickle('X_train.pkl')
+    #X_test.to_pickle('X_test.pkl')
+    
+if TEST_MODEL:
+    X_TEST, y_TEST = lines_TEST.eng, lines_TEST.twi
 
 
 # data generator for training
@@ -153,10 +160,6 @@ def generate_batch(X = X_train, y = y_train, batch_size = 16):
                         # Offset by one timestep
                         decoder_target_data[i, t - 1, target_token_index[word]] = 1.
             yield([encoder_input_data, decoder_input_data], decoder_target_data)
-
-
-# Dimension of latent context vector between encoder and decoder
-latent_dim = 50
 
 
 # Encoder
@@ -190,29 +193,27 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 #model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
 
-# load a previously trained model to continue training from a checkpoint?
-LOAD_MODEL = True
 if LOAD_MODEL:
-    model.load_weights('TrainedModel.h5')
+    model.load_weights(ModelToLoad)
 
-# Specify training parameters
-train_samples = len(X_train)
-val_samples = len(X_test)
-batch_size = 96 # 32 works, 64 too large on kaggle
-epochs = 5 # 50 for full length run, 2 for short run to make sure things work
-
-
-# Train
-model.fit_generator(generator = generate_batch(X_train, y_train, batch_size = batch_size),
-                    steps_per_epoch = train_samples//batch_size,
-                    epochs=epochs,
-                    validation_data = generate_batch(X_test, y_test, batch_size = batch_size),
-                    validation_steps = val_samples//batch_size
-                   )
-
-
-# Always save model!!
-model.save('TrainedModel.h5')
+if TRAIN_MODEL:
+    # Specify training parameters
+    train_samples = len(X_train)
+    val_samples = len(X_test)
+    batch_size = 96 # 32 works, 64 too large on kaggle
+    epochs = 5 # 50 for full length run, 2 for short run to make sure things work
+    
+    
+    # Train
+    model.fit_generator(generator = generate_batch(X_train, y_train, batch_size = batch_size),
+                        steps_per_epoch = train_samples//batch_size,
+                        epochs=epochs,
+                        validation_data = generate_batch(X_test, y_test, batch_size = batch_size),
+                        validation_steps = val_samples//batch_size)
+    
+    
+    # Always save model!!
+    model.save('TrainedModel.h5')
 
 
 # THE FOLLOWING CODE ALLOWS YOU TO MAKE INFERENCE
@@ -275,97 +276,116 @@ def decode_sequence(input_seq):
 
     return decoded_sentence
 
+# Predict several samples to test model - should do this per major checkpoint at some point
+if TRAIN_MODEL:
+    # Define function to pull sentence from Train queue
+    train_gen = generate_batch(X_train, y_train, batch_size = 1)
+    k=-1
+    
+    
+    # Evaluate on first sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on first sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 2nd sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 3rd sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 4th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 5th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 6th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 7th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 8th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 9th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
+    
+    # Evaluate on 10th sentence
+    k+=1
+    (input_seq, actual_output), _ = next(train_gen)
+    decoded_sentence = decode_sequence(input_seq)
+    print('Input English sentence:', X_train[k:k+1].values[0])
+    print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
+    print('Predicted Twi Translation:', decoded_sentence[:-4])
 
-# Define function to pull sentence from Train queue
-train_gen = generate_batch(X_train, y_train, batch_size = 1)
-k=-1
-
-
-# Evaluate on first sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on first sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 2nd sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 3rd sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 4th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 5th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 6th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 7th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 8th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 9th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
-# Evaluate on 10th sentence
-k+=1
-(input_seq, actual_output), _ = next(train_gen)
-decoded_sentence = decode_sequence(input_seq)
-print('Input English sentence:', X_train[k:k+1].values[0])
-print('Actual Twi Translation:', y_train[k:k+1].values[0][6:-4])
-print('Predicted Twi Translation:', decoded_sentence[:-4])
-
+if TEST_MODEL:
+    predicted_translations = []
+    # Define function to pull sentence from TEST queue
+    TEST_gen = generate_batch(X_TEST, y_TEST, batch_size = 1)
+    k=-1
+    for twi_sentence in X_TEST:
+        # Evaluate on next sentence
+        k+=1
+        (input_seq, actual_output), _ = next(TEST_gen)
+        print('Input English sentence:', X_TEST[k:k+1].values[0])
+        print('Actual Twi Translation:', y_TEST[k:k+1].values[0][6:-4])
+        print('Predicted Twi Translation:', decoded_sentence[:-4])
+        
+        predicted_translations.append(decoded_sentence[:-4])
+    lines_TEST['twi_predicted'] = predicted_translations
+    
+    
+        
