@@ -386,6 +386,7 @@ if TEST_MODEL:
         
         predicted_translations.append(decoded_sentence[:-4])
     lines_TEST['twi_predicted'] = predicted_translations
+    lines_TEST.to_csv('../data/Twi_text_predicted.csv')
     
     
         
