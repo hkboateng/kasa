@@ -400,7 +400,7 @@ if TRAIN_MODEL:
 if TEST_MODEL:
     predicted_translations = []
     # Define function to pull sentence from TEST queue
-    TEST_gen = generate_batch(X_TEST, y_TEST, batch_size = 1)
+    TEST_gen = generate_batch_TEST(X_TEST, y_TEST, batch_size = 1)
     k=-1
     for twi_sentence in X_TEST:
         # Evaluate on next sentence
