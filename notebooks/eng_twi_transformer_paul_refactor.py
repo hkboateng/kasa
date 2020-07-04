@@ -70,6 +70,10 @@ lines_TEST.eng=lines_TEST.eng.apply(lambda x: re.sub(" +", " ", x))
 lines_TEST.twi=lines_TEST.twi.apply(lambda x: re.sub(" +", " ", x))
 lines_TEST.eng=lines_TEST.eng.apply(lambda x: " ".join(x.split(' ')[:MAX_SEQ_LENGTH]))
 lines_TEST.twi=lines_TEST.twi.apply(lambda x: " ".join(x.split(' ')[:MAX_SEQ_LENGTH]))
+
+lines_TEST.eng=lines_TEST.eng.apply(lambda x: re.sub(r'[^\w\s]','',x))
+lines_TEST.twi=lines_TEST.twi.apply(lambda x: re.sub(r'[^\w\s]','',x))
+
 lines_TEST.twi=lines_TEST.twi.apply(lambda x : 'START_ '+ x + ' _END')
 
 
