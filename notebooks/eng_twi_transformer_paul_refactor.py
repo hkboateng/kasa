@@ -127,14 +127,14 @@ reverse_target_char_index = dict((i, word) for word, i in target_token_index.ite
 lines = shuffle(lines)
 lines.head(10)
 
-if TRAIN_MODEL:
-    # Train - Test Split
-    X, y = lines.eng, lines.twi
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
-    
-    # If you wanted to save the data in pickled format:
-    #X_train.to_pickle('X_train.pkl')
-    #X_test.to_pickle('X_test.pkl')
+#if TRAIN_MODEL:
+# Train - Test Split
+X, y = lines.eng, lines.twi
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
+
+# If you wanted to save the data in pickled format:
+#X_train.to_pickle('X_train.pkl')
+#X_test.to_pickle('X_test.pkl')
     
 if TEST_MODEL:
     X_TEST, y_TEST = lines_TEST.eng, lines_TEST.twi
