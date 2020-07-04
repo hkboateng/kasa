@@ -406,6 +406,7 @@ if TEST_MODEL:
         # Evaluate on next sentence
         k+=1
         (input_seq, actual_output), _ = next(TEST_gen)
+        decoded_sentence = decode_sequence(input_seq)
         print('Input English sentence:', X_TEST[k:k+1].values[0])
         print('Actual Twi Translation:', y_TEST[k:k+1].values[0][6:-4])
         print('Predicted Twi Translation:', decoded_sentence[:-4])
